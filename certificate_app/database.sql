@@ -1,7 +1,7 @@
-CREATE DATABASE certificates_db;
+CREATE DATABASE IF NOT EXISTS certificates_db;
 USE certificates_db;
 
-CREATE TABLE certificates (
+CREATE TABLE IF NOT EXISTS certificates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
     certificate_type VARCHAR(50),
