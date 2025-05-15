@@ -1,6 +1,4 @@
-import streamlit as st
-st.write("Secrets keys:", st.secrets.keys())
-st.write("MySQL keys:", st.secrets.get("mysql", "No mysql section found"))
+
 import streamlit as st
 import mysql.connector
 from datetime import datetime
