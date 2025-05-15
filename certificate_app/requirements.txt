@@ -1,3 +1,9 @@
 streamlit
 mysql-connector-python
+pdfkitstreamlit
+mysql-connector-python
+qrcode
+Pillow
 pdfkit
+jinja2
+
