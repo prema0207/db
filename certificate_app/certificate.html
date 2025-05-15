@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ certificate_type }} Certificate</title>
+    <style>
+        body {
+            font-family: "Times New Roman", Times, serif;
+            padding: 40px;
+            border: 10px solid #333;
+            max-width: 800px;
+            margin: auto;
+            background-color: #fefefe;
+        }
+        h1 {
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 30px;
+        }
+        .content {
+            margin-top: 40px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        .qr-code {
+            text-align: right;
+            margin-top: 40px;
+        }
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>{{ certificate_type }} Certificate</h1>
+
+    <div class="content">
+        {% if certificate_type == "Income" %}
+            <p>This is to certify that <strong>{{ name }}</strong> has an annual income of ₹<strong>{{ income }}</strong>.</p>
+        {% elif certificate_type == "Community" %}
+            <p>This is to certify that <strong>{{ name }}</strong> belongs to the <strong>{{ community }}</strong> community.</p>
+        {% endif %}
+        <p>Issued on: <strong>{{ date }}</strong></p>
+    </div>
+
+    <div class="qr-code">
+        <img src="data:image/png;base64,{{ qr_code }}" width="120" />
+    </div>
+
+    <div class="footer">
+        Online Certificate Issuance System
+    </div>
+
+</body>
+</html>
