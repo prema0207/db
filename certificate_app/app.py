@@ -1,108 +1,126 @@
 import streamlit as st
 import mysql.connector
 from datetime import datetime
+import qrcode
+from io import BytesIO
+import base64
+from jinja2 import Environment, FileSystemLoader
 import pdfkit
 import os
 
-# --- Database connection ---
+# DB connection from Streamlit secrets
 def get_connection():
     return mysql.connector.connect(
-        host="localhost",       # change to your host or Supabase host
-        user="root",            # your DB username
-        password="",            # your DB password
-        database="certificates_db"  # your DB name
+        host=st.secrets["mysql"]["host"],
+        user=st.secrets["mysql"]["user"],
+        password=st.secrets["mysql"]["password"],
+        database=st.secrets["mysql"]["database"],
+        port=st.secrets["mysql"].get("port", 3306)
     )
 
-# --- Create table if not exists ---
+# Create table if not exists
 def create_table():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS certificates (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100),
-            certificate_type VARCHAR(50),
-            income DECIMAL(10,2),
-            community VARCHAR(100),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+    CREATE TABLE IF NOT EXISTS certificates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100),
+        certificate_type VARCHAR(50),
+        income DECIMAL(10,2),
+        community VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     """)
     conn.commit()
     cursor.close()
     conn.close()
 
-# --- Generate HTML template ---
-def generate_html(name, cert_type, income, community):
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    if cert_type == "Income":
-        content = f"""
-        <h2 style='text-align:center;'>Income Certificate</h2>
-        <p>This is to certify that <strong>{name}</strong> has an annual income of ₹{income}.</p>
-        <p>Date of Issue: {date_str}</p>
-        """
-    else:
-        content = f"""
-        <h2 style='text-align:center;'>Community Certificate</h2>
-        <p>This is to certify that <strong>{name}</strong> belongs to the <strong>{community}</strong> community.</p>
-        <p>Date of Issue: {date_str}</p>
-        """
-    return f"<html><body>{content}</body></html>"
+# Generate QR code as base64 string
+def generate_qr_code(data: str) -> str:
+    qr = qrcode.make(data)
+    buffer = BytesIO()
+    qr.save(buffer, format="PNG")
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return img_str
 
-# --- Generate PDF ---
-def create_pdf(html_str, output_path):
-    with open("temp.html", "w") as file:
-        file.write(html_str)
-    pdfkit.from_file("temp.html", output_path)
-    os.remove("temp.html")
+# Render HTML from template and data
+def render_html(name, cert_type, income, community, date, qr_code_b64):
+    env = Environment(loader=FileSystemLoader('.'))
+    template = env.get_template('certificate.html')
+    html = template.render(
+        name=name,
+        certificate_type=cert_type,
+        income=income,
+        community=community,
+        date=date,
+        qr_code=qr_code_b64
+    )
+    return html
 
-# --- Streamlit App ---
+# Generate PDF from HTML string
+def generate_pdf(html_str, output_path):
+    config = pdfkit.configuration()  # Adjust if wkhtmltopdf path needed
+    pdfkit.from_string(html_str, output_path, configuration=config)
+
+# Streamlit app
 def main():
-    st.set_page_config(page_title="Certificate Generator")
     st.title("Online Certificate Generator")
 
     create_table()
 
-    name = st.text_input("Full Name")
     cert_type = st.selectbox("Certificate Type", ["Income", "Community"])
+    name = st.text_input("Full Name")
 
-    income = 0.0
-    community = ""
-
+    income = None
+    community = None
     if cert_type == "Income":
-        income = st.number_input("Annual Income (₹)", min_value=0.0)
+        income = st.number_input("Annual Income (₹)", min_value=0.0, step=1000.0)
     else:
         community = st.text_input("Community")
 
     if st.button("Generate Certificate"):
-        if not name:
-            st.warning("Please enter the name.")
+        if not name.strip():
+            st.error("Please enter your name.")
             return
-        if cert_type == "Income" and income <= 0:
-            st.warning("Please enter valid income.")
+        if cert_type == "Income" and income is None:
+            st.error("Please enter income.")
             return
-        if cert_type == "Community" and not community:
-            st.warning("Please enter community.")
+        if cert_type == "Community" and not community.strip():
+            st.error("Please enter community.")
             return
 
-        # Save to DB
+        # Insert into DB
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO certificates (name, certificate_type, income, community)
             VALUES (%s, %s, %s, %s)
-        """, (name, cert_type, income if cert_type == "Income" else None, community if cert_type == "Community" else None))
+        """, (name, cert_type, income if income else None, community if community else None))
         conn.commit()
+        cert_id = cursor.lastrowid
         cursor.close()
         conn.close()
 
-        # Create certificate
-        html_str = generate_html(name, cert_type, income, community)
-        pdf_path = f"{name}_{cert_type}_certificate.pdf"
-        create_pdf(html_str, pdf_path)
+        # Prepare certificate data
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        verify_url = f"http://yourdomain.com/verify?id={cert_id}"
+        qr_code_b64 = generate_qr_code(verify_url)
 
-        st.success("Certificate Generated Successfully!")
+        # Render HTML & generate PDF
+        html = render_html(name, cert_type, income, community, date_str, qr_code_b64)
+        pdf_path = f"certificate_{cert_id}.pdf"
+        generate_pdf(html, pdf_path)
+
+        # Let user download
         with open(pdf_path, "rb") as f:
-            st.download_button("Download Certificate PDF", f, file_name=pdf_path)
+            pdf_bytes = f.read()
+        b64_pdf = base64.b64encode(pdf_bytes).decode()
+        href = f'<a href="data:application/octet-stream;base64,{b64_pdf}" download="certificate_{cert_id}.pdf">Download your certificate PDF</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
+        # Cleanup generated PDF
+        os.remove(pdf_path)
 
 if __name__ == "__main__":
     main()
