@@ -1,6 +1,6 @@
 [mysql]
-host = "your-database-host"
-user = "your-database-user"
-password = "your-database-password"
-database = "your-database-name"
+host = "your-db-host"
+user = "your-db-user"
+password = "your-db-password"
+database = "your-db-name"
 port = 3306
