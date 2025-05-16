@@ -3,3 +3,6 @@ mysql-connector-python
 qrcode
 jinja2
 pdfkit
+streamlit
+supabase
+
