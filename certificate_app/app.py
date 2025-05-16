@@ -1,3 +1,5 @@
+import pdfkit
+st.success("pdfkit is working!")
 
 import streamlit as st
 import mysql.connector
