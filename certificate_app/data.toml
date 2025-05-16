@@ -4,3 +4,7 @@ user = "your-db-user"
 password = "your-db-password"
 database = "your-db-name"
 port = 3306
+[supabase]
+url = "https://your-project.supabase.co"
+key = "your-supabase-service-role-key"
+
