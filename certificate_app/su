@@ -1,2 +1,8 @@
 streamlit
 supabase
+from supabase import create_client, Client
+
+url = "https://your-project-id.supabase.co"
+key = "your-public-anon-key"
+supabase: Client = create_client(url, key)
+
