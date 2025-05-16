@@ -1,6 +1,5 @@
 streamlit
 mysql-connector-python
 qrcode
-Pillow
 jinja2
-fpdf
+pdfkit
