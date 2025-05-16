@@ -1,3 +1,7 @@
+
+import streamlit as st
+st.write("Secrets keys:", list(st.secrets.keys()))
+st.write("MySQL:", st.secrets.get("mysql", "No mysql section found"))
 import pdfkit
 import streamlit as st
 st.success("pdfkit is working!")
